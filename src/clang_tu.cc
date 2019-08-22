@@ -26,12 +26,12 @@ using namespace clang;
 
 namespace ccls {
 std::string pathFromFileEntry(const FileEntry &file) {
-  std::string ret = NormalizePath(file.getName());
+  std::string ret = normalizePath(file.getName());
   // Resolve symlinks outside of workspace folders, e.g. /usr/include/c++/7.3.0
-  return NormalizeFolder(ret) ? ret : RealPath(ret);
+  return normalizeFolder(ret) ? ret : realPath(ret);
 }
 
-static Pos Decomposed2LineAndCol(const SourceManager &SM,
+static Pos decomposed2LineAndCol(const SourceManager &SM,
                                  std::pair<FileID, unsigned> I) {
   int l = SM.getLineNumber(I.first, I.second) - 1,
       c = SM.getColumnNumber(I.first, I.second) - 1;
@@ -58,7 +58,7 @@ Range fromCharSourceRange(const SourceManager &sm, const LangOptions &lang,
     EInfo.second += Lexer::MeasureTokenLength(ELoc, sm, lang);
   if (fid)
     *fid = BInfo.first;
-  return {Decomposed2LineAndCol(sm, BInfo), Decomposed2LineAndCol(sm, EInfo)};
+  return {decomposed2LineAndCol(sm, BInfo), decomposed2LineAndCol(sm, EInfo)};
 }
 
 Range fromTokenRange(const SourceManager &sm, const LangOptions &lang,
@@ -70,18 +70,18 @@ Range fromTokenRangeDefaulted(const SourceManager &sm, const LangOptions &lang,
                               SourceRange sr, FileID fid, Range range) {
   auto decomposed = sm.getDecomposedLoc(sm.getExpansionLoc(sr.getBegin()));
   if (decomposed.first == fid)
-    range.start = Decomposed2LineAndCol(sm, decomposed);
+    range.start = decomposed2LineAndCol(sm, decomposed);
   SourceLocation loc = sm.getExpansionLoc(sr.getEnd());
   decomposed = sm.getDecomposedLoc(loc);
   if (decomposed.first == fid) {
     decomposed.second += Lexer::MeasureTokenLength(loc, sm, lang);
-    range.end = Decomposed2LineAndCol(sm, decomposed);
+    range.end = decomposed2LineAndCol(sm, decomposed);
   }
   return range;
 }
 
 std::unique_ptr<CompilerInvocation>
-BuildCompilerInvocation(const std::string &main, std::vector<const char *> args,
+buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
                         IntrusiveRefCntPtr<llvm::vfs::FileSystem> VFS) {
   std::string save = "-resource-dir=" + g_config->clang.resourceDir;
   args.push_back(save.c_str());
@@ -102,7 +102,7 @@ BuildCompilerInvocation(const std::string &main, std::vector<const char *> args,
 }
 
 // clang::BuiltinType::getName without PrintingPolicy
-const char *ClangBuiltinTypeName(int kind) {
+const char *clangBuiltinTypeName(int kind) {
   switch (BuiltinType::Kind(kind)) {
   case BuiltinType::Void:
     return "void";

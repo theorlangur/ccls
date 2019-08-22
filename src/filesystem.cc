@@ -21,9 +21,9 @@ using namespace llvm;
 #include <set>
 #include <vector>
 
-void GetFilesInFolder(std::string folder, bool recursive, bool dir_prefix,
+void getFilesInFolder(std::string folder, bool recursive, bool dir_prefix,
                       const std::function<void(const std::string &)> &handler) {
-  ccls::EnsureEndsInSlash(folder);
+  ccls::ensureEndsInSlash(folder);
   sys::fs::file_status Status;
   if (sys::fs::status(folder, Status, true))
     return;

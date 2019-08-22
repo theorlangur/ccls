@@ -25,7 +25,7 @@ using namespace clang;
 
 namespace {
 llvm::Expected<tooling::Replacements>
-FormatCode(std::string_view code, std::string_view file, tooling::Range Range) {
+formatCode(std::string_view code, std::string_view file, tooling::Range Range) {
   StringRef Code(code.data(), code.size()), File(file.data(), file.size());
   auto Style = format::getStyle("file", File, "LLVM", Code, nullptr);
   if (!Style)
@@ -41,7 +41,7 @@ FormatCode(std::string_view code, std::string_view file, tooling::Range Range) {
       File));
 }
 
-std::vector<TextEdit> ReplacementsToEdits(std::string_view code,
+std::vector<TextEdit> replacementsToEdits(std::string_view code,
                                           const tooling::Replacements &Repls) {
   std::vector<TextEdit> ret;
   int i = 0, line = 0, col = 0;
@@ -67,48 +67,48 @@ std::vector<TextEdit> ReplacementsToEdits(std::string_view code,
   return ret;
 }
 
-void Format(ReplyOnce &reply, WorkingFile *wfile, tooling::Range range) {
+void format(ReplyOnce &reply, WorkingFile *wfile, tooling::Range range) {
   std::string_view code = wfile->buffer_content;
-  auto ReplsOrErr = FormatCode(code, wfile->filename, range);
+  auto ReplsOrErr = formatCode(code, wfile->filename, range);
   if (ReplsOrErr)
-    reply(ReplacementsToEdits(code, *ReplsOrErr));
+    reply(replacementsToEdits(code, *ReplsOrErr));
   else
-    reply.Error(ErrorCode::UnknownErrorCode,
+    reply.error(ErrorCode::UnknownErrorCode,
                 llvm::toString(ReplsOrErr.takeError()));
 }
 } // namespace
 
 void MessageHandler::textDocument_formatting(DocumentFormattingParam &param,
                                              ReplyOnce &reply) {
-  auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply);
+  auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply);
   if (!wf)
     return;
-  Format(reply, wf, {0, (unsigned)wf->buffer_content.size()});
+  format(reply, wf, {0, (unsigned)wf->buffer_content.size()});
 }
 
 void MessageHandler::textDocument_onTypeFormatting(
     DocumentOnTypeFormattingParam &param, ReplyOnce &reply) {
-  auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply);
+  auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply);
   if (!wf) {
     return;
   }
   std::string_view code = wf->buffer_content;
-  int pos = GetOffsetForPosition(param.position, code);
+  int pos = getOffsetForPosition(param.position, code);
   auto lbrace = code.find_last_of('{', pos);
   if (lbrace == std::string::npos)
     lbrace = pos;
-  Format(reply, wf, {(unsigned)lbrace, unsigned(pos - lbrace)});
+  format(reply, wf, {(unsigned)lbrace, unsigned(pos - lbrace)});
 }
 
 void MessageHandler::textDocument_rangeFormatting(
     DocumentRangeFormattingParam &param, ReplyOnce &reply) {
-  auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply);
+  auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply);
   if (!wf) {
     return;
   }
   std::string_view code = wf->buffer_content;
-  int begin = GetOffsetForPosition(param.range.start, code),
-      end = GetOffsetForPosition(param.range.end, code);
-  Format(reply, wf, {(unsigned)begin, unsigned(end - begin)});
+  int begin = getOffsetForPosition(param.range.start, code),
+      end = getOffsetForPosition(param.range.end, code);
+  format(reply, wf, {(unsigned)begin, unsigned(end - begin)});
 }
 } // namespace ccls

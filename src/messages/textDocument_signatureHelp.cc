@@ -40,12 +40,12 @@ REFLECT_STRUCT(ParameterInformation, label);
 REFLECT_STRUCT(SignatureInformation, label, documentation, parameters);
 REFLECT_STRUCT(SignatureHelp, signatures, activeSignature, activeParameter);
 
-void BuildOptional(const CodeCompletionString &CCS, std::string &label,
+void buildOptional(const CodeCompletionString &CCS, std::string &label,
                    std::vector<ParameterInformation> &ls_params) {
   for (const auto &Chunk : CCS) {
     switch (Chunk.Kind) {
     case CodeCompletionString::CK_Optional:
-      BuildOptional(*Chunk.Optional, label, ls_params);
+      buildOptional(*Chunk.Optional, label, ls_params);
       break;
     case CodeCompletionString::CK_Placeholder:
       // A string that acts as a placeholder for, e.g., a function call
@@ -123,7 +123,7 @@ public:
           break;
         }
         case CodeCompletionString::CK_Optional:
-          BuildOptional(*Chunk.Optional, ls_sig.label, ls_sig.parameters);
+          buildOptional(*Chunk.Optional, ls_sig.label, ls_sig.parameters);
           break;
         case CodeCompletionString::CK_VerticalSpace:
           break;
@@ -156,16 +156,16 @@ void MessageHandler::textDocument_signatureHelp(
     TextDocumentPositionParam &param, ReplyOnce &reply) {
   static CompleteConsumerCache<SignatureHelp> cache;
   Position begin_pos = param.position;
-  std::string path = param.textDocument.uri.GetPath();
-  WorkingFile *wf = wfiles->GetFile(path);
+  std::string path = param.textDocument.uri.getPath();
+  WorkingFile *wf = wfiles->getFile(path);
   if (!wf) {
-    reply.NotOpened(path);
+    reply.notOpened(path);
     return;
   }
   {
     std::string filter;
     Position end_pos;
-    begin_pos = wf->GetCompletionPosition(param.position, &filter, &end_pos);
+    begin_pos = wf->getCompletionPosition(param.position, &filter, &end_pos);
   }
 
   SemaManager::OnComplete callback =
@@ -175,7 +175,7 @@ void MessageHandler::textDocument_signatureHelp(
         auto *Consumer = static_cast<SignatureHelpConsumer *>(OptConsumer);
         reply(Consumer->ls_sighelp);
         if (!Consumer->from_cache) {
-          cache.WithLock([&]() {
+          cache.withLock([&]() {
             cache.path = path;
             cache.position = begin_pos;
             cache.result = Consumer->ls_sighelp;
@@ -187,13 +187,13 @@ void MessageHandler::textDocument_signatureHelp(
   CCOpts.IncludeGlobals = false;
   CCOpts.IncludeMacros = false;
   CCOpts.IncludeBriefComments = true;
-  if (cache.IsCacheValid(path, begin_pos)) {
+  if (cache.isCacheValid(path, begin_pos)) {
     SignatureHelpConsumer Consumer(CCOpts, true);
-    cache.WithLock([&]() { Consumer.ls_sighelp = cache.result; });
+    cache.withLock([&]() { Consumer.ls_sighelp = cache.result; });
     callback(&Consumer);
   } else {
-    manager->comp_tasks.PushBack(std::make_unique<SemaManager::CompTask>(
-        reply.id, param.textDocument.uri.GetPath(), param.position,
+    manager->comp_tasks.pushBack(std::make_unique<SemaManager::CompTask>(
+        reply.id, param.textDocument.uri.getPath(), param.position,
         std::make_unique<SignatureHelpConsumer>(CCOpts, false), CCOpts,
         callback));
   }
