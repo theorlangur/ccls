@@ -28,6 +28,10 @@ struct Project {
     // 0 unless coming from a compile_commands.json entry.
     int compdb_size = 0;
     int id = -1;
+
+    //if true, the file should NOT be provided to compiler as main input
+    bool fake_target = false;
+    std::string origfilename;//actual file used instead of fake
   };
 
   struct Folder {

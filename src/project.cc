@@ -61,6 +61,21 @@ std::pair<LanguageId, bool> lookupExtension(std::string_view filename) {
 
 namespace {
 
+bool ExistsInSemiColonList(StringRef list, StringRef what)
+{
+  bool found = false;
+  std::pair<StringRef, StringRef> res;
+  res.second = list;
+  while (!res.second.empty()) {
+    res = res.second.split(';');
+    if (what.endswith(res.first)) {
+      found = true;
+      break;
+    }
+  }
+  return found;
+}
+
 enum OptionClass {
   EqOrJoinOrSep,
   EqOrSep,
@@ -124,6 +139,25 @@ struct ProjectProcessor {
             ok |= lang == LanguageId::ObjC;
           else if (a.consume_front("%objective-cpp "))
             ok |= lang == LanguageId::ObjCpp;
+          else if (ok && a.consume_front("%fake_exclude "))
+          {//this option is enabled only if there was a file type filter specified: %cpp, %h,...
+            ok = false;//not a real option
+            bool found = ExistsInSemiColonList(a, entry.filename);
+            entry.fake_target = !found;//true
+            break;
+          }
+          else if (ok && a.consume_front("%fake_include "))
+          {//this option is enabled only if there was a file type filter specified: %cpp, %h,...
+            ok = false;//not a real option
+            bool found = ExistsInSemiColonList(a, entry.filename);
+            entry.fake_target = found;//true
+            break;
+          }
+          else if (a.consume_front("%inferhint "))
+          {
+            ok = false;
+            break;
+          }
           else
             break;
         }
@@ -235,6 +269,19 @@ readCompilerArgumentsFromFile(const std::string &path) {
 
 bool appendToCDB(const std::vector<const char *> &args) {
   return args.size() && StringRef("%compile_commands.json") == args[0];
+}
+
+bool hasInferHint(const std::vector<const char *> &args, std::string &hint) {
+  if (args.size() > 1)
+  {
+    StringRef r(args[1]);
+    if (r.consume_front("%inferhint "))
+    {
+      hint = r.data();
+      return true;
+    }
+  }
+  return false;
 }
 
 std::vector<const char *> getFallback(const std::string &path) {
@@ -550,18 +597,34 @@ Project::Entry Project::findEntry(const std::string &path, bool can_redirect,
       return ret;
     if (!best) {
       // Infer args from a similar path.
+      const std::string *pInferSrc = &path;
+      std::string tInf;
+      bool hasInfer = false;
+      if (best_dot_ccls_args && hasInferHint(*best_dot_ccls_args, tInf))
+      {
+        hasInfer = true;
+        pInferSrc = &tInf;
+      }
       int best_score = INT_MIN;
       for (auto &[root, folder] : root2folder)
         if (StringRef(path).startswith(root))
+        {
+          std::string absInferHint = root;
+          if (hasInfer)
+          {
+            absInferHint = absInferHint + tInf;
+            pInferSrc = &absInferHint;
+          }
           for (const Entry &e : folder.entries)
             if (e.compdb_size) {
-              int score = computeGuessScore(path, e.filename);
+              int score = computeGuessScore(*pInferSrc, e.filename);
               if (score > best_score) {
                 best_score = score;
                 best_compdb_folder = &folder;
                 best = &e;
               }
             }
+        }
       ret.is_inferred = true;
     }
     if (!best) {
@@ -571,6 +634,7 @@ Project::Entry Project::findEntry(const std::string &path, bool can_redirect,
       // The entry may have different filename but it doesn't matter when
       // building CompilerInvocation. The main filename is specified
       // separately.
+      ret.filename = best->filename;
       ret.root = best->root;
       ret.directory = best->directory;
       ret.args = best->args;
@@ -579,6 +643,7 @@ Project::Entry Project::findEntry(const std::string &path, bool can_redirect,
       else
         best_dot_ccls_args = nullptr;
     }
+    ret.origfilename = ret.filename;
     ret.filename = path;
   }
 
