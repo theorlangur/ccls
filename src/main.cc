@@ -71,18 +71,18 @@ void closeLog() { fclose(ccls::log::file); }
 int main(int argc, char **argv) {
   traceMe();
   sys::PrintStackTraceOnErrorSignal(argv[0]);
-  cl::SetVersionPrinter([](raw_ostream &OS) {
-    OS << clang::getClangToolFullVersion("ccls version " CCLS_VERSION "\nclang")
+  cl::SetVersionPrinter([](raw_ostream &os) {
+    os << clang::getClangToolFullVersion("ccls version " CCLS_VERSION "\nclang")
        << "\n";
   });
 
-  for (auto &I : TopLevelSubCommand->OptionsMap)
+  for (auto &i : TopLevelSubCommand->OptionsMap)
 #if LLVM_VERSION_MAJOR >= 9 // rL360179
-    if (I.second->Categories[0] != &C)
+    if (i.second->Categories[0] != &C)
 #else
-    if (I.second->Category != &C)
+    if (i.second->Category != &C)
 #endif
-      I.second->setHiddenFlag(ReallyHidden);
+      i.second->setHiddenFlag(ReallyHidden);
 
   ParseCommandLineOptions(argc, argv,
                           "C/C++/Objective-C language server\n\n"
@@ -149,9 +149,9 @@ int main(int argc, char **argv) {
     sys::ChangeStdinToBinary();
     sys::ChangeStdoutToBinary();
     if (opt_index.size()) {
-      SmallString<256> Root(opt_index);
-      sys::fs::make_absolute(Root);
-      pipeline::standalone(Root.str());
+      SmallString<256> root(opt_index);
+      sys::fs::make_absolute(root);
+      pipeline::standalone(root.str());
     } else {
       // The thread that reads from stdin and dispatchs commands to the main
       // thread.

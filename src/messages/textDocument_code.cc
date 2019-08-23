@@ -99,7 +99,7 @@ void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
     return;
 
   std::vector<CodeLens> result;
-  auto Add = [&, wf = wf](const char *singular, Cmd_xref show, Range range,
+  auto add = [&, wf = wf](const char *singular, Cmd_xref show, Range range,
                           int num, bool force_display = false) {
     if (!num && !force_display)
       return;
@@ -128,28 +128,28 @@ void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
         continue;
       std::vector<Use> base_uses = getUsesForAllBases(db, func);
       std::vector<Use> derived_uses = getUsesForAllDerived(db, func);
-      Add("ref", {sym.usr, Kind::Func, "uses"}, sym.range, func.uses.size(),
+      add("ref", {sym.usr, Kind::Func, "uses"}, sym.range, func.uses.size(),
           base_uses.empty());
       if (base_uses.size())
-        Add("b.ref", {sym.usr, Kind::Func, "bases uses"}, sym.range,
+        add("b.ref", {sym.usr, Kind::Func, "bases uses"}, sym.range,
             base_uses.size());
       if (derived_uses.size())
-        Add("d.ref", {sym.usr, Kind::Func, "derived uses"}, sym.range,
+        add("d.ref", {sym.usr, Kind::Func, "derived uses"}, sym.range,
             derived_uses.size());
       if (base_uses.empty())
-        Add("base", {sym.usr, Kind::Func, "bases"}, sym.range,
+        add("base", {sym.usr, Kind::Func, "bases"}, sym.range,
             def->bases.size());
-      Add("derived", {sym.usr, Kind::Func, "derived"}, sym.range,
+      add("derived", {sym.usr, Kind::Func, "derived"}, sym.range,
           func.derived.size());
       break;
     }
     case Kind::Type: {
       QueryType &type = db->getType(sym);
-      Add("ref", {sym.usr, Kind::Type, "uses"}, sym.range, type.uses.size(),
+      add("ref", {sym.usr, Kind::Type, "uses"}, sym.range, type.uses.size(),
           true);
-      Add("derived", {sym.usr, Kind::Type, "derived"}, sym.range,
+      add("derived", {sym.usr, Kind::Type, "derived"}, sym.range,
           type.derived.size());
-      Add("var", {sym.usr, Kind::Type, "instances"}, sym.range,
+      add("var", {sym.usr, Kind::Type, "instances"}, sym.range,
           type.instances.size());
       break;
     }
@@ -158,7 +158,7 @@ void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
       const QueryVar::Def *def = var.anyDef();
       if (!def || (def->is_local() && !g_config->codeLens.localVariables))
         continue;
-      Add("ref", {sym.usr, Kind::Var, "uses"}, sym.range, var.uses.size(),
+      add("ref", {sym.usr, Kind::Var, "uses"}, sym.range, var.uses.size(),
           def->kind != SymbolKind::Macro);
       break;
     }

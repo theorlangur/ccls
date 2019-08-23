@@ -413,27 +413,27 @@ void reflectMemberStart(JsonReader &vis) {
     throw std::invalid_argument("object");
 }
 
-static BumpPtrAllocator Alloc;
-static DenseSet<CachedHashStringRef> Strings;
-static std::mutex AllocMutex;
+static BumpPtrAllocator alloc;
+static DenseSet<CachedHashStringRef> strings;
+static std::mutex allocMutex;
 
-CachedHashStringRef internH(StringRef S) {
-  if (S.empty())
-    S = "";
-  CachedHashString HS(S);
-  std::lock_guard lock(AllocMutex);
-  auto R = Strings.insert(HS);
-  if (R.second) {
-    char *P = Alloc.Allocate<char>(S.size() + 1);
-    memcpy(P, S.data(), S.size());
-    P[S.size()] = '\0';
-    *R.first = CachedHashStringRef(StringRef(P, S.size()), HS.hash());
+CachedHashStringRef internH(StringRef s) {
+  if (s.empty())
+    s = "";
+  CachedHashString hs(s);
+  std::lock_guard lock(allocMutex);
+  auto r = strings.insert(hs);
+  if (r.second) {
+    char *p = alloc.Allocate<char>(s.size() + 1);
+    memcpy(p, s.data(), s.size());
+    p[s.size()] = '\0';
+    *r.first = CachedHashStringRef(StringRef(p, s.size()), hs.hash());
   }
-  return *R.first;
+  return *r.first;
 }
 
-const char *intern(StringRef S) {
-  return internH(S).val().data();
+const char *intern(StringRef s) {
+  return internH(s).val().data();
 }
 
 std::string serialize(SerializeFormat format, IndexFile &file) {

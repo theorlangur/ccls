@@ -174,7 +174,7 @@ void MessageHandler::workspace_symbol(WorkspaceSymbolParam &param,
     if (!isspace(c))
       query_without_space += c;
 
-  auto Add = [&](SymbolIdx sym) {
+  auto add = [&](SymbolIdx sym) {
     std::string_view detailed_name = db->getSymbolName(sym, true);
     int pos = reverseSubseqMatch(query_without_space, detailed_name, sensitive);
     return pos >= 0 &&
@@ -184,13 +184,13 @@ void MessageHandler::workspace_symbol(WorkspaceSymbolParam &param,
            cands.size() >= g_config->workspaceSymbol.maxNum;
   };
   for (auto &func : db->funcs)
-    if (Add({func.usr, Kind::Func}))
+    if (add({func.usr, Kind::Func}))
       goto done_add;
   for (auto &type : db->types)
-    if (Add({type.usr, Kind::Type}))
+    if (add({type.usr, Kind::Type}))
       goto done_add;
   for (auto &var : db->vars)
-    if (var.def.size() && !var.def[0].is_local() && Add({var.usr, Kind::Var}))
+    if (var.def.size() && !var.def[0].is_local() && add({var.usr, Kind::Var}))
       goto done_add;
 done_add:
 

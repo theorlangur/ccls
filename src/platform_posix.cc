@@ -53,9 +53,9 @@ void threadEnter();
 }
 
 std::string normalizePath(const std::string &path) {
-  llvm::SmallString<256> P(path);
-  llvm::sys::path::remove_dots(P, true);
-  return {P.data(), P.size()};
+  llvm::SmallString<256> p(path);
+  llvm::sys::path::remove_dots(p, true);
+  return {p.data(), p.size()};
 }
 
 void freeUnusedMemory() {

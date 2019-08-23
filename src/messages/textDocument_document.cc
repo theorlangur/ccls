@@ -165,14 +165,14 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
   auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply, &file_id);
   if (!wf)
     return;
-  auto Allows = [&](SymbolRef sym) {
+  auto allows = [&](SymbolRef sym) {
     return !(sym.role & param.excludeRole);
   };
 
   if (param.startLine >= 0) {
     std::vector<lsRange> result;
     for (auto [sym, refcnt] : file->symbol2refcnt) {
-      if (refcnt <= 0 || !Allows(sym) ||
+      if (refcnt <= 0 || !allows(sym) ||
           !(param.startLine <= sym.range.start.line &&
             sym.range.start.line <= param.endLine))
         continue;
@@ -221,7 +221,7 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
             def_ptrs.push_back(&def);
           }
       });
-      if (def_ptrs.empty() || !(kind == SymbolKind::Namespace || Allows(sym))) {
+      if (def_ptrs.empty() || !(kind == SymbolKind::Namespace || allows(sym))) {
         ds.reset();
         continue;
       }
@@ -268,7 +268,7 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
   } else {
     std::vector<SymbolInformation> result;
     for (auto [sym, refcnt] : file->symbol2refcnt) {
-      if (refcnt <= 0 || !Allows(sym))
+      if (refcnt <= 0 || !allows(sym))
         continue;
       if (std::optional<SymbolInformation> info =
               getSymbolInfo(db, sym, false)) {

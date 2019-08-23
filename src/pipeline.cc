@@ -195,9 +195,9 @@ std::unique_ptr<IndexFile> rawCacheLoad(const std::string &path) {
 }
 
 std::mutex &getFileMutex(const std::string &path) {
-  const int N_MUTEXES = 256;
-  static std::mutex mutexes[N_MUTEXES];
-  return mutexes[std::hash<std::string>()(path) % N_MUTEXES];
+  const int n_MUTEXES = 256;
+  static std::mutex mutexes[n_MUTEXES];
+  return mutexes[std::hash<std::string>()(path) % n_MUTEXES];
 }
 
 bool indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,

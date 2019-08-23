@@ -258,12 +258,12 @@ void DB::removeUsrs(Kind kind, int file_id,
 void DB::applyIndexUpdate(IndexUpdate *u) {
 #define REMOVE_ADD(C, F)                                                       \
   for (auto &it : u->C##s_##F) {                                               \
-    auto R = C##_usr.try_emplace({it.first}, C##_usr.size());                  \
-    if (R.second) {                                                            \
+    auto r = C##_usr.try_emplace({it.first}, C##_usr.size());                  \
+    if (r.second) {                                                            \
       C##s.emplace_back();                                                     \
       C##s.back().usr = it.first;                                              \
     }                                                                          \
-    auto &entity = C##s[R.first->second];                                      \
+    auto &entity = C##s[r.first->second];                                      \
     removeRange(entity.F, it.second.first);                                    \
     addRange(entity.F, it.second.second);                                      \
   }
@@ -281,7 +281,7 @@ void DB::applyIndexUpdate(IndexUpdate *u) {
   }
 
   // References (Use &use) in this function are important to update file_id.
-  auto Ref = [&](std::unordered_map<int, int> &lid2fid, Usr usr, Kind kind,
+  auto ref = [&](std::unordered_map<int, int> &lid2fid, Usr usr, Kind kind,
                  Use &use, int delta) {
     use.file_id =
         use.file_id == -1 ? u->file_id : lid2fid.find(use.file_id)->second;
@@ -308,12 +308,12 @@ void DB::applyIndexUpdate(IndexUpdate *u) {
       [&](Usr usr, Kind kind,
           llvm::DenseMap<Usr, int, DenseMapInfoForUsr> &entity_usr,
           auto &entities, auto &p, bool hint_implicit) {
-        auto R = entity_usr.try_emplace(usr, entity_usr.size());
-        if (R.second) {
+        auto r = entity_usr.try_emplace(usr, entity_usr.size());
+        if (r.second) {
           entities.emplace_back();
           entities.back().usr = usr;
         }
-        auto &entity = entities[R.first->second];
+        auto &entity = entities[r.first->second];
         for (Use &use : p.first) {
           if (hint_implicit && use.role & Role::Implicit) {
             // Make ranges of implicit function calls larger (spanning one more
@@ -324,7 +324,7 @@ void DB::applyIndexUpdate(IndexUpdate *u) {
               use.range.start.column--;
             use.range.end.column++;
           }
-          Ref(prev_lid2file_id, usr, kind, use, -1);
+          ref(prev_lid2file_id, usr, kind, use, -1);
         }
         removeRange(entity.uses, p.first);
         for (Use &use : p.second) {
@@ -333,7 +333,7 @@ void DB::applyIndexUpdate(IndexUpdate *u) {
               use.range.start.column--;
             use.range.end.column++;
           }
-          Ref(lid2file_id, usr, kind, use, 1);
+          ref(lid2file_id, usr, kind, use, 1);
         }
         addRange(entity.uses, p.second);
       };
@@ -441,10 +441,10 @@ void DB::update(const Lid2file_id &lid2file_id, int file_id,
           def.spell->extent}]++;
     }
 
-    auto R = func_usr.try_emplace({u.first}, func_usr.size());
-    if (R.second)
+    auto r = func_usr.try_emplace({u.first}, func_usr.size());
+    if (r.second)
       funcs.emplace_back();
-    QueryFunc &existing = funcs[R.first->second];
+    QueryFunc &existing = funcs[r.first->second];
     existing.usr = u.first;
     if (!tryReplaceDef(existing.def, std::move(def)))
       existing.def.push_back(std::move(def));
@@ -463,10 +463,10 @@ void DB::update(const Lid2file_id &lid2file_id, int file_id,
           {def.spell->range, u.first, Kind::Type, def.spell->role},
           def.spell->extent}]++;
     }
-    auto R = type_usr.try_emplace({u.first}, type_usr.size());
-    if (R.second)
+    auto r = type_usr.try_emplace({u.first}, type_usr.size());
+    if (r.second)
       types.emplace_back();
-    QueryType &existing = types[R.first->second];
+    QueryType &existing = types[r.first->second];
     existing.usr = u.first;
     if (!tryReplaceDef(existing.def, std::move(def)))
       existing.def.push_back(std::move(def));
@@ -485,10 +485,10 @@ void DB::update(const Lid2file_id &lid2file_id, int file_id,
           {def.spell->range, u.first, Kind::Var, def.spell->role},
           def.spell->extent}]++;
     }
-    auto R = var_usr.try_emplace({u.first}, var_usr.size());
-    if (R.second)
+    auto r = var_usr.try_emplace({u.first}, var_usr.size());
+    if (r.second)
       vars.emplace_back();
-    QueryVar &existing = vars[R.first->second];
+    QueryVar &existing = vars[r.first->second];
     existing.usr = u.first;
     if (!tryReplaceDef(existing.def, std::move(def)))
       existing.def.push_back(std::move(def));

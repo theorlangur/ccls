@@ -95,13 +95,13 @@ struct Session {
   bool inferred = false;
 
   // TODO share
-  llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS =
+  llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> fs =
       llvm::vfs::getRealFileSystem();
-  std::shared_ptr<clang::PCHContainerOperations> PCH;
+  std::shared_ptr<clang::PCHContainerOperations> pch;
 
   Session(const Project::Entry &file, WorkingFiles *wfiles,
-                    std::shared_ptr<clang::PCHContainerOperations> PCH)
-      : file(file), wfiles(wfiles), PCH(PCH) {}
+          std::shared_ptr<clang::PCHContainerOperations> pch)
+      : file(file), wfiles(wfiles), pch(pch) {}
 
   std::shared_ptr<PreambleData> getPreamble();
 };
@@ -119,14 +119,14 @@ struct SemaManager {
              const Position &position,
              std::unique_ptr<clang::CodeCompleteConsumer> Consumer,
              clang::CodeCompleteOptions CCOpts, const OnComplete &on_complete)
-        : id(id), path(path), position(position), Consumer(std::move(Consumer)),
-          CCOpts(CCOpts), on_complete(on_complete) {}
+        : id(id), path(path), position(position), consumer(std::move(Consumer)),
+          cc_opts(CCOpts), on_complete(on_complete) {}
 
     RequestId id;
     std::string path;
     Position position;
-    std::unique_ptr<clang::CodeCompleteConsumer> Consumer;
-    clang::CodeCompleteOptions CCOpts;
+    std::unique_ptr<clang::CodeCompleteConsumer> consumer;
+    clang::CodeCompleteOptions cc_opts;
     OnComplete on_complete;
   };
   struct DiagTask {
@@ -141,7 +141,7 @@ struct SemaManager {
   };
 
   SemaManager(Project *project, WorkingFiles *wfiles,
-                    OnDiagnostic on_diagnostic, OnDropped on_dropped);
+              OnDiagnostic on_diagnostic, OnDropped on_dropped);
 
   void scheduleDiag(const std::string &path, int debounce);
   void onView(const std::string &path);
@@ -168,7 +168,7 @@ struct SemaManager {
   ThreadedQueue<DiagTask> diag_tasks;
   ThreadedQueue<PreambleTask> preamble_tasks;
 
-  std::shared_ptr<clang::PCHContainerOperations> PCH;
+  std::shared_ptr<clang::PCHContainerOperations> pch;
 };
 
 // Cached completion information, so we can give fast completion results when

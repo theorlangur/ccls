@@ -295,10 +295,10 @@ void do_initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) 
     LOG_S(INFO) << "initializationOptions: " << output.GetString();
 
     if (g_config->cache.directory.size()) {
-      SmallString<256> Path(g_config->cache.directory);
-      sys::fs::make_absolute(project_path, Path);
+      SmallString<256> path(g_config->cache.directory);
+      sys::fs::make_absolute(project_path, path);
       // Use upper case for the Driver letter on Windows.
-      g_config->cache.directory = normalizePath(Path.str());
+      g_config->cache.directory = normalizePath(path.str());
       ensureEndsInSlash(g_config->cache.directory);
     }
   }

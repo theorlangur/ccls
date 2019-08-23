@@ -138,9 +138,9 @@ std::string resolveIfRelative(const std::string &directory,
                               const std::string &path) {
   if (sys::path::is_absolute(path))
     return path;
-  SmallString<256> Ret;
-  sys::path::append(Ret, directory, path);
-  return normalizePath(Ret.str());
+  SmallString<256> ret;
+  sys::path::append(ret, directory, path);
+  return normalizePath(ret.str());
 }
 
 std::string realPath(const std::string &path) {
@@ -159,10 +159,10 @@ bool normalizeFolder(std::string &path) {
 }
 
 std::optional<int64_t> lastWriteTime(const std::string &path) {
-  sys::fs::file_status Status;
-  if (sys::fs::status(path, Status))
+  sys::fs::file_status status;
+  if (sys::fs::status(path, status))
     return {};
-  return sys::toTimeT(Status.getLastModificationTime());
+  return sys::toTimeT(status.getLastModificationTime());
 }
 
 std::optional<std::string> readContent(const std::string &filename) {

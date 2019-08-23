@@ -53,18 +53,18 @@ using namespace llvm;
 namespace ccls {
 std::pair<LanguageId, bool> lookupExtension(std::string_view filename) {
   using namespace clang::driver;
-  auto I = types::lookupTypeForExtension(
+  auto i = types::lookupTypeForExtension(
       sys::path::extension({filename.data(), filename.size()}).substr(1));
-  bool header = I == types::TY_CHeader || I == types::TY_CXXHeader ||
-                I == types::TY_ObjCXXHeader;
-  bool objc = types::isObjC(I);
+  bool header = i == types::TY_CHeader || i == types::TY_CXXHeader ||
+                i == types::TY_ObjCXXHeader;
+  bool objc = types::isObjC(i);
   LanguageId ret;
-  if (types::isCXX(I))
-    ret = types::isCuda(I) ? LanguageId::Cuda
+  if (types::isCXX(i))
+    ret = types::isCuda(i) ? LanguageId::Cuda
                            : objc ? LanguageId::ObjCpp : LanguageId::Cpp;
   else if (objc)
     ret = LanguageId::ObjC;
-  else if (I == types::TY_C || I == types::TY_CHeader)
+  else if (i == types::TY_C || i == types::TY_CHeader)
     ret = LanguageId::C;
   else
     ret = LanguageId::Unknown;
@@ -113,30 +113,30 @@ struct ProjectProcessor {
     auto [lang, header] = lookupExtension(entry.filename);
     for (int i = entry.compdb_size; i < entry.args.size(); i++) {
       const char *arg = entry.args[i];
-      StringRef A(arg);
-      if (A[0] == '%') {
+      StringRef a(arg);
+      if (a[0] == '%') {
         bool ok = false;
         for (;;) {
-          if (A.consume_front("%c "))
+          if (a.consume_front("%c "))
             ok |= lang == LanguageId::C;
-          else if (A.consume_front("%h "))
+          else if (a.consume_front("%h "))
             ok |= lang == LanguageId::C && header;
-          else if (A.consume_front("%cpp "))
+          else if (a.consume_front("%cpp "))
             ok |= lang == LanguageId::Cpp;
-          else if (A.consume_front("%cu "))
+          else if (a.consume_front("%cu "))
             ok |= lang == LanguageId::Cuda;
-          else if (A.consume_front("%hpp "))
+          else if (a.consume_front("%hpp "))
             ok |= lang == LanguageId::Cpp && header;
-          else if (A.consume_front("%objective-c "))
+          else if (a.consume_front("%objective-c "))
             ok |= lang == LanguageId::ObjC;
-          else if (A.consume_front("%objective-cpp "))
+          else if (a.consume_front("%objective-cpp "))
             ok |= lang == LanguageId::ObjCpp;
           else
             break;
         }
         if (ok)
-          args.push_back(A.data());
-      } else if (!excludesArg(A, i)) {
+          args.push_back(a.data());
+      } else if (!excludesArg(a, i)) {
         args.push_back(arg);
       }
     }
@@ -228,12 +228,12 @@ struct ProjectProcessor {
 
 std::vector<const char *>
 readCompilerArgumentsFromFile(const std::string &path) {
-  auto MBOrErr = MemoryBuffer::getFile(path);
-  if (!MBOrErr)
+  auto mbOrErr = MemoryBuffer::getFile(path);
+  if (!mbOrErr)
     return {};
   std::vector<const char *> args;
-  for (line_iterator I(*MBOrErr.get(), true, '#'), E; I != E; ++I) {
-    std::string line = *I;
+  for (line_iterator i(*mbOrErr.get(), true, '#'), e; i != e; ++i) {
+    std::string line = *i;
     doPathMapping(line);
     args.push_back(intern(line));
   }
@@ -253,11 +253,11 @@ std::vector<const char *> getFallback(const std::string path) {
 }
 
 void loadDirectoryListing(ProjectProcessor &proc, const std::string &root,
-                          const StringSet<> &Seen) {
+                          const StringSet<> &seen) {
   Project::Folder &folder = proc.folder;
   std::vector<std::string> files;
 
-  auto GetDotCcls = [&root, &folder](std::string cur) {
+  auto getDotCcls = [&root, &folder](std::string cur) {
     while (!(cur = sys::path::parent_path(cur)).empty()) {
       auto it = folder.dot_ccls.find(cur);
       if (it != folder.dot_ccls.end())
@@ -272,10 +272,10 @@ void loadDirectoryListing(ProjectProcessor &proc, const std::string &root,
   };
 
   getFilesInFolder(root, true /*recursive*/, true /*add_folder_to_path*/,
-                   [&folder, &files, &Seen](const std::string &path) {
+                   [&folder, &files, &seen](const std::string &path) {
                      std::pair<LanguageId, bool> lang = lookupExtension(path);
                      if (lang.first != LanguageId::Unknown && !lang.second) {
-                       if (!Seen.count(path))
+                       if (!seen.count(path))
                          files.push_back(path);
                      } else if (sys::path::filename(path) == ".ccls") {
                        std::vector<const char *> args = readCompilerArgumentsFromFile(path);
@@ -293,14 +293,14 @@ void loadDirectoryListing(ProjectProcessor &proc, const std::string &root,
 
   // If the first line of .ccls is %compile_commands.json, append extra flags.
   for (auto &e : folder.entries)
-    if (const auto &args = GetDotCcls(e.filename); appendToCDB(args)) {
+    if (const auto &args = getDotCcls(e.filename); appendToCDB(args)) {
       if (args.size())
         e.args.insert(e.args.end(), args.begin() + 1, args.end());
       proc.process(e);
     }
   // Set flags for files not in compile_commands.json
   for (const std::string &file : files)
-    if (const auto &args = GetDotCcls(file); !appendToCDB(args)) {
+    if (const auto &args = getDotCcls(file); !appendToCDB(args)) {
       Project::Entry e;
       e.root = e.directory = root;
       e.filename = file;
@@ -358,18 +358,18 @@ int computeGuessScore(std::string_view a, std::string_view b) {
 } // namespace
 
 void Project::loadDirectory(const std::string &root, Project::Folder &folder) {
-  SmallString<256> CDBDir, Path, StdinPath;
+  SmallString<256> cDBDir, path, stdinPath;
   std::string err_msg;
   folder.entries.clear();
   if (g_config->compilationDatabaseCommand.empty()) {
-    CDBDir = root;
+    cDBDir = root;
     if (g_config->compilationDatabaseDirectory.size()) {
       if (sys::path::is_absolute(g_config->compilationDatabaseDirectory))
-        CDBDir = g_config->compilationDatabaseDirectory;
+        cDBDir = g_config->compilationDatabaseDirectory;
       else
-        sys::path::append(CDBDir, g_config->compilationDatabaseDirectory);
+        sys::path::append(cDBDir, g_config->compilationDatabaseDirectory);
     }
-    sys::path::append(Path, CDBDir, "compile_commands.json");
+    sys::path::append(path, cDBDir, "compile_commands.json");
   } else {
     // If `compilationDatabaseCommand` is specified, execute it to get the
     // compdb.
@@ -383,24 +383,24 @@ void Project::loadDirectory(const std::string &root, Project::Folder &folder) {
     char tmpdir[] = "/tmp/ccls-compdb-XXXXXX";
     if (!mkdtemp(tmpdir))
       return;
-    CDBDir = tmpdir;
+    cDBDir = tmpdir;
 #endif
-    sys::path::append(Path, CDBDir, "compile_commands.json");
-    sys::path::append(StdinPath, CDBDir, "stdin");
+    sys::path::append(path, cDBDir, "compile_commands.json");
+    sys::path::append(stdinPath, cDBDir, "stdin");
     {
       rapidjson::StringBuffer sb;
       rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
       JsonWriter json_writer(&writer);
       reflect(json_writer, *g_config);
       std::string input = sb.GetString();
-      FILE *fout = fopen(StdinPath.c_str(), "wb");
+      FILE *fout = fopen(stdinPath.c_str(), "wb");
       fwrite(input.c_str(), input.size(), 1, fout);
       fclose(fout);
     }
-    std::array<Optional<StringRef>, 3> Redir{StringRef(StdinPath),
-                                             StringRef(Path), StringRef()};
+    std::array<Optional<StringRef>, 3> redir{StringRef(stdinPath),
+                                             StringRef(path), StringRef()};
     std::vector<StringRef> args{g_config->compilationDatabaseCommand, root};
-    if (sys::ExecuteAndWait(args[0], args, llvm::None, Redir, 0, 0, &err_msg) <
+    if (sys::ExecuteAndWait(args[0], args, llvm::None, redir, 0, 0, &err_msg) <
         0) {
       LOG_S(ERROR) << "failed to execute " << args[0].str() << " "
                    << args[1].str() << ": " << err_msg;
@@ -408,29 +408,29 @@ void Project::loadDirectory(const std::string &root, Project::Folder &folder) {
     }
   }
 
-  std::unique_ptr<tooling::CompilationDatabase> CDB =
-      tooling::CompilationDatabase::loadFromDirectory(CDBDir, err_msg);
+  std::unique_ptr<tooling::CompilationDatabase> cdb =
+      tooling::CompilationDatabase::loadFromDirectory(cDBDir, err_msg);
   if (!g_config->compilationDatabaseCommand.empty()) {
 #ifdef _WIN32
     DeleteFileA(StdinPath.c_str());
     DeleteFileA(Path.c_str());
     RemoveDirectoryA(CDBDir.c_str());
 #else
-    unlink(StdinPath.c_str());
-    unlink(Path.c_str());
-    rmdir(CDBDir.c_str());
+    unlink(stdinPath.c_str());
+    unlink(path.c_str());
+    rmdir(cDBDir.c_str());
 #endif
   }
 
   ProjectProcessor proc(folder);
-  StringSet<> Seen;
+  StringSet<> seen;
   std::vector<Project::Entry> result;
-  if (!CDB) {
-    if (g_config->compilationDatabaseCommand.size() || sys::fs::exists(Path))
-      LOG_S(ERROR) << "failed to load " << Path.c_str();
+  if (!cdb) {
+    if (g_config->compilationDatabaseCommand.size() || sys::fs::exists(path))
+      LOG_S(ERROR) << "failed to load " << path.c_str();
   } else {
-    LOG_S(INFO) << "loaded " << Path.c_str();
-    for (tooling::CompileCommand &Cmd : CDB->getAllCompileCommands()) {
+    LOG_S(INFO) << "loaded " << path.c_str();
+    for (tooling::CompileCommand &cmd : cdb->getAllCompileCommands()) {
       static bool once;
       Project::Entry entry;
       entry.root = root;
@@ -438,15 +438,15 @@ void Project::loadDirectory(const std::string &root, Project::Folder &folder) {
 
       // If workspace folder is real/ but entries use symlink/, convert to
       // real/.
-      entry.directory = realPath(Cmd.Directory);
+      entry.directory = realPath(cmd.Directory);
       normalizeFolder(entry.directory);
       doPathMapping(entry.directory);
       entry.filename =
-          realPath(resolveIfRelative(entry.directory, Cmd.Filename));
+          realPath(resolveIfRelative(entry.directory, cmd.Filename));
       normalizeFolder(entry.filename);
       doPathMapping(entry.filename);
 
-      std::vector<std::string> args = std::move(Cmd.CommandLine);
+      std::vector<std::string> args = std::move(cmd.CommandLine);
       entry.args.reserve(args.size());
       for (int i = 0; i < args.size(); i++) {
         doPathMapping(args[i]);
@@ -466,17 +466,17 @@ void Project::loadDirectory(const std::string &root, Project::Folder &folder) {
       }
       proc.getSearchDirs(entry);
 
-      if (Seen.insert(entry.filename).second)
+      if (seen.insert(entry.filename).second)
         folder.entries.push_back(entry);
     }
   }
 
   // Use directory listing if .ccls exists or compile_commands.json does not
   // exist.
-  Path.clear();
-  sys::path::append(Path, root, ".ccls");
-  if (sys::fs::exists(Path))
-    loadDirectoryListing(proc, root, Seen);
+  path.clear();
+  sys::path::append(path, root, ".ccls");
+  if (sys::fs::exists(path))
+    loadDirectoryListing(proc, root, seen);
 }
 
 void Project::load(const std::string &root) {

@@ -24,25 +24,24 @@ namespace ccls {
 using namespace clang;
 
 namespace {
-llvm::Expected<tooling::Replacements>
-formatCode(std::string_view code, std::string_view file, tooling::Range Range) {
-  StringRef Code(code.data(), code.size()), File(file.data(), file.size());
-  auto Style = format::getStyle("file", File, "LLVM", Code, nullptr);
-  if (!Style)
-    return Style.takeError();
-  tooling::Replacements IncludeReplaces =
-      format::sortIncludes(*Style, Code, {Range}, File);
-  auto Changed = tooling::applyAllReplacements(Code, IncludeReplaces);
-  if (!Changed)
-    return Changed.takeError();
-  return IncludeReplaces.merge(format::reformat(
-      *Style, *Changed,
-      tooling::calculateRangesAfterReplacements(IncludeReplaces, {Range}),
-      File));
+llvm::Expected<tooling::Replacements> formatCode(StringRef code, StringRef file,
+                                                 tooling::Range range) {
+  auto style = format::getStyle("file", file, "LLVM", code, nullptr);
+  if (!style)
+    return style.takeError();
+  tooling::Replacements includeReplaces =
+      format::sortIncludes(*style, code, {range}, file);
+  auto changed = tooling::applyAllReplacements(code, includeReplaces);
+  if (!changed)
+    return changed.takeError();
+  return includeReplaces.merge(format::reformat(
+      *style, *changed,
+      tooling::calculateRangesAfterReplacements(includeReplaces, {range}),
+      file));
 }
 
 std::vector<TextEdit> replacementsToEdits(std::string_view code,
-                                          const tooling::Replacements &Repls) {
+                                          const tooling::Replacements &repls) {
   std::vector<TextEdit> ret;
   int i = 0, line = 0, col = 0;
   auto move = [&](int p) {
@@ -58,23 +57,25 @@ std::vector<TextEdit> replacementsToEdits(std::string_view code,
         col++;
       }
   };
-  for (const auto &R : Repls) {
-    move(R.getOffset());
+  for (const auto &r : repls) {
+    move(r.getOffset());
     int l = line, c = col;
-    move(R.getOffset() + R.getLength());
-    ret.push_back({{{l, c}, {line, col}}, R.getReplacementText().str()});
+    move(r.getOffset() + r.getLength());
+    ret.push_back({{{l, c}, {line, col}}, r.getReplacementText().str()});
   }
   return ret;
 }
 
 void format(ReplyOnce &reply, WorkingFile *wfile, tooling::Range range) {
   std::string_view code = wfile->buffer_content;
-  auto ReplsOrErr = formatCode(code, wfile->filename, range);
-  if (ReplsOrErr)
-    reply(replacementsToEdits(code, *ReplsOrErr));
+  auto replsOrErr = formatCode(
+      StringRef(code.data(), code.size()),
+      StringRef(wfile->filename.data(), wfile->filename.size()), range);
+  if (replsOrErr)
+    reply(replacementsToEdits(code, *replsOrErr));
   else
     reply.error(ErrorCode::UnknownErrorCode,
-                llvm::toString(ReplsOrErr.takeError()));
+                llvm::toString(replsOrErr.takeError()));
 }
 } // namespace
 
