@@ -303,11 +303,11 @@ buildCompilerInstance(Session &session, std::unique_ptr<CompilerInvocation> ci,
                       IntrusiveRefCntPtr<llvm::vfs::FileSystem> fs,
                       DiagnosticConsumer &dc, const PreambleData *preamble,
                       const std::string &main,
-                      std::unique_ptr<llvm::MemoryBuffer> &buf) {
+                      std::unique_ptr<llvm::MemoryBuffer> &buf, const std::string &buf_name = std::string()) {
   if (preamble)
     preamble->preamble.OverridePreamble(*ci, fs, buf.get());
   else
-    ci->getPreprocessorOpts().addRemappedFile(main, buf.get());
+    ci->getPreprocessorOpts().addRemappedFile(buf_name.empty() ? main : buf_name, buf.get());
 
   auto clang = std::make_unique<CompilerInstance>(session.pch);
   clang->setInvocation(std::move(ci));
@@ -496,8 +496,21 @@ void *completionMain(void *manager_) {
                                        true);
       continue;
     }
+
+    std::string buf_name;
+    std::string main_name = task->path;
+    PreambleData *pPreambleData = preamble.get();
+    if (session->file.fake_target)
+    {
+      //in case of fake file entry the 'input' target for the compiler
+      //invocation is not the same as task->path, but the remapping must
+      //still be made for the right file, hence the 'bufName' vs 'mainName'
+      buf_name = task->path;
+      main_name = session->file.origfilename;
+      pPreambleData = nullptr;
+    }
     auto clang = buildCompilerInstance(*session, std::move(ci), fs, dc,
-                                       preamble.get(), task->path, buf);
+                                       pPreambleData, main_name, buf, buf_name);
     if (!clang)
       continue;
 
@@ -588,8 +601,21 @@ void *diagnosticMain(void *manager_) {
     StoreDiags dc(task.path);
     std::string content = manager->wfiles->getContent(task.path);
     auto buf = llvm::MemoryBuffer::getMemBuffer(content);
+
+    std::string buf_name;
+    std::string main_name = task.path;
+    PreambleData *pPreamble = preamble.get();
+    if (session->file.fake_target)
+    {
+      //in case of fake file entry the 'input' target for the compiler
+      //invocation is not the same as task->path, but the remapping must
+      //still be made for the right file, hence the 'bufName' vs 'mainName'
+      buf_name = task.path;
+      main_name = session->file.origfilename;
+      pPreamble = nullptr;
+    }
     auto clang = buildCompilerInstance(*session, std::move(ci), fs, dc,
-                                       preamble.get(), task.path, buf);
+                                       preamble.get(), main_name, buf, buf_name);
     if (!clang)
       continue;
     if (!parse(*clang))

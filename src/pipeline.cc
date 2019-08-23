@@ -364,8 +364,10 @@ bool indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
         remapped.emplace_back(path_to_index, content);
     }
     bool ok;
+    auto real_index_path = path_to_index;
+    if (entry.fake_target) real_index_path = entry.origfilename;
     indexes = idx::index(completion, wfiles, vfs, entry.directory,
-                         path_to_index, entry.args, remapped, no_linkage, ok);
+                         real_index_path, entry.args, remapped, no_linkage, ok);
 
     if (!ok) {
       if (request.id.valid()) {
