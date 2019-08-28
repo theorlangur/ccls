@@ -117,6 +117,7 @@ QueryType::Def convert(const IndexType::Def &o) {
   r.types = convert(o.types);
   r.vars = convert(o.vars);
   r.alias_of = o.alias_of;
+  r.type_size = o.type_size;
   // no file_id
   r.qual_name_offset = o.qual_name_offset;
   r.short_name_offset = o.short_name_offset;
@@ -162,6 +163,7 @@ IndexUpdate IndexUpdate::createDelta(IndexFile *previous, IndexFile *current) {
     r.types_uses[type.usr].first = std::move(type.uses);
     r.types_derived[type.usr].first = std::move(type.derived);
     r.types_instances[type.usr].first = std::move(type.instances);
+    r.types_sizes[type.usr] = type.def.type_size;
   };
   for (auto &it : current->usr2type) {
     auto &type = it.second;
@@ -171,6 +173,7 @@ IndexUpdate IndexUpdate::createDelta(IndexFile *previous, IndexFile *current) {
     r.types_uses[type.usr].second = std::move(type.uses);
     r.types_derived[type.usr].second = std::move(type.derived);
     r.types_instances[type.usr].second = std::move(type.instances);
+    r.types_sizes[type.usr] = type.def.type_size;
   };
 
   r.vars_hint = current->usr2var.size() - previous->usr2var.size();
@@ -389,6 +392,16 @@ void DB::applyIndexUpdate(IndexUpdate *u) {
   REMOVE_ADD(type, instances);
   for (auto &[usr, p] : u->types_uses)
     updateUses(usr, Kind::Type, type_usr, types, p, false);
+
+  for (auto &[usr, p] : u->types_sizes)
+  {
+    auto r = type_usr.find(usr);
+    if (r != type_usr.end())
+    {
+      auto &qt = types[r->second];
+      qt.type_size = p;//updating type size
+    }
+  }
 
   if ((t = vars.size() + u->vars_hint) > vars.capacity()) {
     t = size_t(t * grow);

@@ -298,6 +298,9 @@ struct Config {
     int trackDependency = 2;
 
     std::vector<std::string> whitelist;
+
+    //if true (default), type sizes (also built-in) are determined during indexing
+    bool determineTypeSizes = true;
   } index;
 
   struct Request {
@@ -352,7 +355,7 @@ REFLECT_STRUCT(Config::Index, blacklist, comments, initialNoLinkage,
                initialBlacklist, initialWhitelist, maxInitializerLines,
                multiVersion, multiVersionBlacklist, multiVersionWhitelist, name,
                onChange, parametersInDeclarations, threads, trackDependency,
-               whitelist);
+               whitelist, determineTypeSizes);
 REFLECT_STRUCT(Config::Request, timeout);
 REFLECT_STRUCT(Config::Session, maxNum);
 REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);

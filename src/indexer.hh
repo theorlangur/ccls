@@ -210,6 +210,7 @@ struct TypeDef : NameMixin<TypeDef<V>> {
   // type comes from a using or typedef statement).
   Usr alias_of = 0;
   int file_id = -1; // not serialized
+  int type_size = 0;
   int16_t qual_name_offset = 0;
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
@@ -220,7 +221,7 @@ struct TypeDef : NameMixin<TypeDef<V>> {
   const Usr *bases_end() const { return bases.end(); }
 };
 REFLECT_STRUCT(TypeDef<VectorAdapter>, detailed_name, hover, comments, spell,
-               bases, funcs, types, vars, alias_of, qual_name_offset,
+               bases, funcs, types, vars, alias_of, type_size, qual_name_offset,
                short_name_offset, short_name_size, kind, parent_kind);
 
 struct IndexType {

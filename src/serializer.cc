@@ -334,6 +334,7 @@ template <typename Vis> void reflect1(Vis &vis, IndexType &v) {
   REFLECT_MEMBER2("alias_of", v.def.alias_of);
   REFLECT_MEMBER2("kind", v.def.kind);
   REFLECT_MEMBER2("parent_kind", v.def.parent_kind);
+  REFLECT_MEMBER2("type_size", v.def.type_size);
 
   REFLECT_MEMBER2("declarations", v.declarations);
   REFLECT_MEMBER2("derived", v.derived);

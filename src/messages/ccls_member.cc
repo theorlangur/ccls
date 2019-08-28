@@ -54,10 +54,12 @@ struct Out_cclsMember {
   // For unexpanded nodes, this is an upper bound because some entities may be
   // undefined. If it is 0, there are no members.
   int numChildren = 0;
+
+  int sizeOfMember = 0;//0 - not provided
   // Empty if the |levels| limit is reached.
   std::vector<Out_cclsMember> children;
 };
-REFLECT_STRUCT(Out_cclsMember, id, name, fieldName, location, numChildren,
+REFLECT_STRUCT(Out_cclsMember, id, name, fieldName, location, numChildren, sizeOfMember,
                children);
 
 bool expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
@@ -110,6 +112,8 @@ bool expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
             int levels, Kind memberKind) {
   if (0 < entry->usr && entry->usr <= BuiltinType::LastKind) {
     entry->name = clangBuiltinTypeName(int(entry->usr));
+    const QueryType *type = &m->db->getType(entry->usr);
+    entry->sizeOfMember = type->type_size;
     return true;
   }
   const QueryType *type = &m->db->getType(entry->usr);
@@ -118,6 +122,7 @@ bool expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
   if (!def)
     return false;
   entry->name = def->name(qualified);
+  entry->sizeOfMember = type->type_size;
   std::unordered_set<Usr> seen;
   if (levels > 0) {
     std::vector<const QueryType *> stack;
@@ -142,6 +147,7 @@ bool expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
         Out_cclsMember entry1;
         entry1.id = std::to_string(def->alias_of);
         entry1.usr = def->alias_of;
+        entry1.sizeOfMember = def->type_size;
         if (def1 && def1->spell) {
           // The declaration of target type.
           if (std::optional<Location> loc =
@@ -191,6 +197,7 @@ bool expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
               if (const QueryType::Def *def1 = type1.anyDef()) {
                 Out_cclsMember entry1;
                 entry1.fieldName = def1->name(false);
+                entry1.sizeOfMember = def1->type_size;
                 if (def1->spell) {
                   if (auto loc = getLsLocation(m->db, m->wfiles, *def1->spell))
                     entry1.location = *loc;
